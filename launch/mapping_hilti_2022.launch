@@ -1,0 +1,60 @@
+<launch>
+  <!--
+    HILTI 2022 dataset launcher
+
+    Enter the ROS Noetic environment before launching:
+      distrobox enter fast-livo2-noetic
+      source /opt/ros/noetic/setup.bash
+      source ~/.local/share/fast-livo2-noetic/catkin_ws/devel/setup.bash
+
+    Run the default sequence (exp01_construction_ground_level):
+      roslaunch fast_livo mapping_hilti_2022.launch
+
+    Run another sequence:
+      roslaunch fast_livo mapping_hilti_2022.launch sequence:=exp11_lower_gallery
+
+    Available local sequences:
+      exp01_construction_ground_level
+      exp11_lower_gallery
+      exp15_attic_to_upper_gallery
+      exp21_outside_building
+
+    Arguments:
+      sequence    Bag filename without the .bag extension.
+      dataset_dir Directory containing the HILTI 2022 bag files.
+      bag_file    Full bag path; overrides dataset_dir and sequence.
+      play_bag    Start rosbag playback when true (default: true).
+      rviz        Start RViz when true (default: true).
+
+    Examples:
+      roslaunch fast_livo mapping_hilti_2022.launch rviz:=false
+      roslaunch fast_livo mapping_hilti_2022.launch play_bag:=false
+      roslaunch fast_livo mapping_hilti_2022.launch bag_file:=/path/to/data.bag
+
+    Pose results are written to Log/result/<sequence>.txt when enabled in
+    config/hilti_2022.yaml. PCD output, when enabled there, is written under
+    Log/pcd/.
+  -->
+
+  <arg name="sequence" default="exp01_construction_ground_level" />
+  <arg name="dataset_dir" default="$(find fast_livo)/.data/hilti/2022" />
+  <arg name="bag_file" default="$(arg dataset_dir)/$(arg sequence).bag" />
+  <arg name="play_bag" default="true" />
+  <arg name="rviz" default="true" />
+
+  <rosparam command="load" file="$(find fast_livo)/config/hilti_2022.yaml" />
+  <param name="evo/seq_name" value="$(arg sequence)" />
+  <param if="$(arg play_bag)" name="use_sim_time" value="true" />
+
+  <node pkg="fast_livo" type="fastlivo_mapping" name="laserMapping" output="screen">
+    <rosparam file="$(find fast_livo)/config/camera_fisheye_HILTI22.yaml" />
+  </node>
+
+  <group if="$(arg rviz)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find fast_livo)/rviz_cfg/hilti.rviz" />
+  </group>
+
+  <node if="$(arg play_bag)" pkg="rosbag" type="play" name="dataset_player"
+        args="--clock --delay=2 $(arg bag_file)" output="screen" required="true" />
+</launch>
